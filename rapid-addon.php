@@ -70,9 +70,9 @@ if (!class_exists('RapidAddon')) {
 		}
 
 
-		function add_field($field_slug, $field_name, $field_type, $enum_values = null) {
+		function add_field($field_slug, $field_name, $field_type, $enum_values = null, $tooltip = "") {
 
-			$this->fields[$field_slug] = array("name" => $field_name, "type" => $field_type, "enum_values" => $enum_values);
+			$this->fields[$field_slug] = array("name" => $field_name, "type" => $field_type, "enum_values" => $enum_values, "tooltip" => $tooltip);
 
 		}
 
@@ -211,7 +211,7 @@ if (!class_exists('RapidAddon')) {
 						'simple',
 						$field_params['name'],
 						array(
-							'tooltip' => '',
+							'tooltip' => $field_params['tooltip'],
 							'field_name' => $this->slug."[".$field_slug."]",
 							'field_value' => $current_values[$this->slug][$field_slug]
 						)
@@ -223,7 +223,7 @@ if (!class_exists('RapidAddon')) {
 						'textarea',
 						$field_params['name'],
 						array(
-							'tooltip' => '',
+							'tooltip' => $field_params['tooltip'],
 							'field_name' => $this->slug."[".$field_slug."]",
 							'field_value' => $current_values[$this->slug][$field_slug]
 						)
@@ -235,7 +235,7 @@ if (!class_exists('RapidAddon')) {
 						'image',
 						$field_params['name'],
 						array(
-							'tooltip' => '',
+							'tooltip' => $field_params['tooltip'],
 							'field_name' => $this->slug."[".$field_slug."]",
 							'field_value' => $current_values[$this->slug][$field_slug],
 
@@ -246,16 +246,15 @@ if (!class_exists('RapidAddon')) {
 						)
 					);
 
-				} else if ($field_params['type'] == 'radio') {
+				} else if ($field_params['type'] == 'radio') {					
 
 					PMXI_API::add_field(
 						'enum',
 						$field_params['name'],
 						array(
-							'tooltip' => '',
+							'tooltip' => $field_params['tooltip'],
 							'field_name' => $this->slug."[".$field_slug."]",
 							'field_value' => $current_values[$this->slug][$field_slug],
-
 							'enum_values' => $field_params['enum_values'],
 							'mapping' => true,
 							'field_key' => $field_slug,
@@ -282,6 +281,21 @@ if (!class_exists('RapidAddon')) {
 		/* Get values of the add-ons fields for use in the metabox */
 		
 		function helper_current_field_values($default = array()) {
+
+			if (empty($default)){
+
+				$options = array(
+					'mapping' => array(),
+					'xpaths' => array()
+				);
+
+				foreach ($this->fields as $field_slug => $field_params) {
+					$options[$field_slug] = '';
+				}
+
+				$default = array($this->slug => $options);				
+
+			}			
 
 			$input = new PMXI_Input();
 
@@ -326,7 +340,31 @@ if (!class_exists('RapidAddon')) {
 		function helper_metabox_top($name) {
 
 			return '
-			<div class="wpallimport-collapsed wpallimport-section '.$this->slug.' closed">
+			<style type="text/css">
+				.wpallimport-plugin .wpallimport-addon div.input {
+					margin-bottom: 15px;
+				}
+				.wpallimport-plugin .wpallimport-addon .custom-params tr td.action{
+					width: auto !important;
+				}
+				.wpallimport-plugin .wpallimport-addon .wpallimport-custom-fields-actions{
+					right:0 !important;
+				}
+				.wpallimport-plugin .wpallimport-addon table tr td.wpallimport-enum-input-wrapper{
+					width: 80%;
+				}
+				.wpallimport-plugin .wpallimport-addon table tr td.wpallimport-enum-input-wrapper input{
+					width: 100%;
+				}
+				.wpallimport-plugin .wpallimport-addon .wpallimport-custom-fields-actions{
+					float: right;	
+					right: 30px;
+					position: relative;				
+					border: 1px solid #ddd;
+					margin-bottom: 10px;
+				}
+			</style>
+			<div class="wpallimport-collapsed wpallimport-section wpallimport-addon '.$this->slug.' closed">
 				<div class="wpallimport-content-section">
 					<div class="wpallimport-collapsed-header">
 						<h3>'.__($name,'pmxi_plugin').'</h3>	
@@ -478,7 +516,6 @@ if (!class_exists('RapidAddon')) {
 	}
 
 }
-
 
 
 
