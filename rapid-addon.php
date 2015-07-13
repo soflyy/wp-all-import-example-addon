@@ -65,9 +65,18 @@ if (!class_exists('RapidAddon')) {
 			if ($addon_active){
 				
 				$current_theme = wp_get_theme();
+
+				$parent_theme = $current_theme->parent();				
+
 				$theme_name = $current_theme->get('Name');
 				
 				$addon_active = (@in_array($theme_name, $this->active_themes) or empty($this->active_themes)) ? true : false;
+
+				if ( ! $addon_active and $parent_theme ){
+					$parent_theme_name = $parent_theme->get('Name');
+					$addon_active = (@in_array($parent_theme_name, $this->active_themes) or empty($this->active_themes)) ? true : false;
+
+				}
 				
 				if ( $addon_active and ! empty($this->active_plugins) ){
 
@@ -448,9 +457,8 @@ if (!class_exists('RapidAddon')) {
 				);
 
 			} else if($field_params['type'] == 'title'){
-
 				?>
-				<h4 class="wpallimport-add-on-options-title"><?php _e($field_params['name'], 'wp_all_import_plugin'); ?><a href="#help" class="wpallimport-help" title="<?php echo $field_params['tooltip']; ?>" style="position:relative; top: -1px;">?</a></h4>				
+				<h4 class="wpallimport-add-on-options-title"><?php _e($field_params['name'], 'wp_all_import_plugin'); ?><?php if ( ! empty($field_params['tooltip'])): ?><a href="#help" class="wpallimport-help" title="<?php echo $field_params['tooltip']; ?>" style="position:relative; top: -1px;">?</a><?php endif; ?></h4>				
 				<?php
 
 			} else if($field_params['type'] == 'plain_text'){
@@ -1026,9 +1034,15 @@ if (!class_exists('RapidAddon')) {
 			if ( ! $is_show_notice and ! empty($conditions['themes']) ){
 
 				$themeInfo    = wp_get_theme();
+				$parentInfo = $themeInfo->parent();				
 				$currentTheme = $themeInfo->get('Name');
 				
 				$is_show_notice = in_array($currentTheme, $conditions['themes']) ? false : true;				
+
+				if ( $is_show_notice and $parentInfo ){
+					$parent_theme = $parentInfo->get('Name');
+					$is_show_notice = in_array($parent_theme, $conditions['themes']) ? false : true;					
+				}
 
 			}
 
@@ -1065,7 +1079,6 @@ if (!class_exists('RapidAddon')) {
 	}	
 
 }
-
 
 
 
