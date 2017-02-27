@@ -1,7 +1,7 @@
 <?php
 
 /*
-Plugin Name: Yoast SEO Add-On
+Plugin Name: WP All Import Yoast SEO Add-On
 Description: A complete example add-on for importing data to certain Yoast SEO fields.
 Version: 1.0
 Author: WP All Import
@@ -21,9 +21,26 @@ $yoast_seo_addon->add_field('yoast_wpseo_opengraph-image', 'Facebook Image', 'im
 
 $yoast_seo_addon->set_import_function('yoast_seo_addon_import');
 
-// display a dismissable notice warning the user to install WP All Import to use the add-on.
-// Customize the notice text by passing a string to admin_notice(), i.e. admin_notice("XYZ Theme recommends you install WP All Import (free | pro)")
-$yoast_seo_addon->admin_notice(); 
+// admin notice if WPAI and/or Yoast isn't installed
+
+if (function_exists('is_plugin_active')) {
+
+	// display this notice if neither the free or pro version of the Yoast plugin is active.
+	if ( !is_plugin_active( "wordpress-seo/wp-seo.php" ) && !is_plugin_active( "wordpress-seo-premium/wp-seo-premium.php" ) ) {
+
+		// Specify a custom admin notice.
+		$yoast_addon->admin_notice(
+			'The Yoast WordPress SEO Add-On requires WP All Import <a href="http://wordpress.org/plugins/wp-all-import" target="_blank">Free</a> and the <a href="https://yoast.com/wordpress/plugins/seo/">Yoast WordPress SEO</a> plugin.'
+		);
+	}
+
+	// only run this add-on if the free or pro version of the Yoast plugin is active.
+	if ( is_plugin_active( "wordpress-seo/wp-seo.php" ) || is_plugin_active( "wordpress-seo-premium/wp-seo-premium.php" ) ) {
+		
+		$yoast_addon->run();
+		
+	}
+}
 
 // the add-on will run for all themes/post types if no arguments are passed to run()
 $yoast_seo_addon->run(); 
