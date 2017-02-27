@@ -42,10 +42,6 @@ if (function_exists('is_plugin_active')) {
 	}
 }
 
-// the add-on will run for all themes/post types if no arguments are passed to run()
-$yoast_seo_addon->run(); 
-
-
 function yoast_seo_addon_import($post_id, $data, $import_options) {
 
 	global $yoast_seo_addon;
