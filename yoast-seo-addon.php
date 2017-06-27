@@ -29,7 +29,7 @@ if (function_exists('is_plugin_active')) {
 	if ( !is_plugin_active( "wordpress-seo/wp-seo.php" ) && !is_plugin_active( "wordpress-seo-premium/wp-seo-premium.php" ) ) {
 
 		// Specify a custom admin notice.
-		$yoast_addon->admin_notice(
+		$yoast_seo_addon->admin_notice(
 			'The Yoast WordPress SEO Add-On requires WP All Import <a href="http://wordpress.org/plugins/wp-all-import" target="_blank">Free</a> and the <a href="https://yoast.com/wordpress/plugins/seo/">Yoast WordPress SEO</a> plugin.'
 		);
 	}
@@ -37,7 +37,7 @@ if (function_exists('is_plugin_active')) {
 	// only run this add-on if the free or pro version of the Yoast plugin is active.
 	if ( is_plugin_active( "wordpress-seo/wp-seo.php" ) || is_plugin_active( "wordpress-seo-premium/wp-seo-premium.php" ) ) {
 		
-		$yoast_addon->run();
+		$yoast_seo_addon->run();
 		
 	}
 }
