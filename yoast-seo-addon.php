@@ -10,58 +10,92 @@ Author: WP All Import
 
 include "rapid-addon.php";
 
-$yoast_seo_addon = new RapidAddon('Yoast SEO Add-On', 'yoast_seo_addon');
+/**
+ * Class YoastSeoAddOn
+ */
+final class YoastSeoAddOn {
 
-$yoast_seo_addon->add_field('yoast_wpseo_title', 'SEO Title', 'text');
-$yoast_seo_addon->add_field('yoast_wpseo_metadesc', 'Meta Description', 'text');
+    /**
+     * Singletone instance.
+     * @var YoastSeoAddOn
+     */
+    protected static $instance;
 
-$yoast_seo_addon->add_field('yoast_wpseo_meta-robots-noindex', 'Meta Robots Index', 'radio', array('' => 'default', '1' => 'noindex', '2' => 'index'));
+    /**
+     * AddOn instance.
+     * @var RapidAddon
+     */
+    protected $addOn;
 
-$yoast_seo_addon->add_field('yoast_wpseo_opengraph-image', 'Facebook Image', 'image');
+    /**
+     * Return singletone instance.
+     * @return YoastSeoAddOn
+     */
+    static public function getInstance() {
+        if (self::$instance == NULL) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
 
-$yoast_seo_addon->set_import_function('yoast_seo_addon_import');
+    /**
+     * YoastSeoAddOn constructor.
+     */
+    protected function __construct() {
+        $this->addOn = new RapidAddon('Yoast SEO Add-On', 'yoast_seo_addon');
+        $this->addOn->add_field('yoast_wpseo_title', 'SEO Title', 'text');
+        $this->addOn->add_field('yoast_wpseo_metadesc', 'Meta Description', 'text');
+        $this->addOn->add_field('yoast_wpseo_meta-robots-noindex', 'Meta Robots Index', 'radio', array('' => 'default', '1' => 'noindex', '2' => 'index'));
+        $this->addOn->add_field('yoast_wpseo_opengraph-image', 'Facebook Image', 'image');
+        $this->addOn->set_import_function([$this, 'import']);
+        add_action('admin_init', [$this, 'admin_init']);
+    }
 
-// admin notice if WPAI and/or Yoast isn't installed
+    /**
+     *  Check add-on conditions.
+     */
+    public function admin_init() {
+        if (function_exists('is_plugin_active')) {
+            // display this notice if neither the free or pro version of the Yoast plugin is active.
+            if ( !is_plugin_active( "wordpress-seo/wp-seo.php" ) && !is_plugin_active( "wordpress-seo-premium/wp-seo-premium.php" ) ) {
+                // Specify a custom admin notice.
+                $this->addOn->admin_notice(
+                    'The Yoast WordPress SEO Add-On requires WP All Import <a href="http://wordpress.org/plugins/wp-all-import" target="_blank">Free</a> and the <a href="https://yoast.com/wordpress/plugins/seo/">Yoast WordPress SEO</a> plugin.'
+                );
+            }
+            // only run this add-on if the free or pro version of the Yoast plugin is active.
+            if ( is_plugin_active( "wordpress-seo/wp-seo.php" ) || is_plugin_active( "wordpress-seo-premium/wp-seo-premium.php" ) ) {
+                $this->addOn->run();
+            }
+        }
+    }
 
-if (function_exists('is_plugin_active')) {
+    /**
+     * Import function.
+     *
+     * @param $post_id
+     * @param $data
+     * @param $import_options
+     */
+    public function import($post_id, $data, $import_options) {
 
-	// display this notice if neither the free or pro version of the Yoast plugin is active.
-	if ( !is_plugin_active( "wordpress-seo/wp-seo.php" ) && !is_plugin_active( "wordpress-seo-premium/wp-seo-premium.php" ) ) {
+        if ($this->addOn->can_update_meta('_yoast_wpseo_title', $import_options)) {
+            update_post_meta($post_id, '_yoast_wpseo_title', $data['yoast_wpseo_title']);
+        }
 
-		// Specify a custom admin notice.
-		$yoast_seo_addon->admin_notice(
-			'The Yoast WordPress SEO Add-On requires WP All Import <a href="http://wordpress.org/plugins/wp-all-import" target="_blank">Free</a> and the <a href="https://yoast.com/wordpress/plugins/seo/">Yoast WordPress SEO</a> plugin.'
-		);
-	}
+        if ($this->addOn->can_update_meta('_yoast_wpseo_metadesc', $import_options)) {
+            update_post_meta($post_id, '_yoast_wpseo_metadesc', $data['yoast_wpseo_metadesc']);
+        }
 
-	// only run this add-on if the free or pro version of the Yoast plugin is active.
-	if ( is_plugin_active( "wordpress-seo/wp-seo.php" ) || is_plugin_active( "wordpress-seo-premium/wp-seo-premium.php" ) ) {
-		
-		$yoast_seo_addon->run();
-		
-	}
+        if ($this->addOn->can_update_meta('_yoast_wpseo_meta-robots-noindex', $import_options)) {
+            update_post_meta($post_id, '_yoast_wpseo_meta-robots-noindex', $data['yoast_wpseo_meta-robots-noindex']);
+        }
+
+        if ($this->addOn->can_update_image($import_options)) {
+            $image_url = wp_get_attachment_url($data['yoast_wpseo_opengraph-image']['attachment_id']);
+            update_post_meta($post_id, '_yoast_wpseo_opengraph-image', $image_url);
+        }
+    }
 }
 
-function yoast_seo_addon_import($post_id, $data, $import_options) {
-
-	global $yoast_seo_addon;
-
-	if ($yoast_seo_addon->can_update_meta('_yoast_wpseo_title', $import_options)) {
-		update_post_meta($post_id, '_yoast_wpseo_title', $data['yoast_wpseo_title']);
-	}
-
-	if ($yoast_seo_addon->can_update_meta('_yoast_wpseo_metadesc', $import_options)) {
-		update_post_meta($post_id, '_yoast_wpseo_metadesc', $data['yoast_wpseo_metadesc']);
-	}
-
-	if ($yoast_seo_addon->can_update_meta('_yoast_wpseo_meta-robots-noindex', $import_options)) {
-		update_post_meta($post_id, '_yoast_wpseo_meta-robots-noindex', $data['yoast_wpseo_meta-robots-noindex']);
-	}
-
-
-	if ($yoast_seo_addon->can_update_image($import_options)) {
-		$image_url = wp_get_attachment_url($data['yoast_wpseo_opengraph-image']['attachment_id']);
-		update_post_meta($post_id, '_yoast_wpseo_opengraph-image', $image_url);
-	}
-
-}
+YoastSeoAddOn::getInstance();
