@@ -8,27 +8,13 @@ Author: WP All Import
 
 include "rapid-addon.php";
 
-/**
- * Class Yoast_Seo_Add_On.
- */
-final class Yoast_Seo_Add_On {
 
-    /**
-     * Singletone instance.
-     * @var Yoast_Seo_Add_On
-     */
+final class yoast_seo_add_on {
+
     protected static $instance;
 
-    /**
-     * Add On instance.
-     * @var RapidAddon
-     */
     protected $add_on;
 
-    /**
-     * Return singletone instance.
-     * @return Yoast_Seo_Add_On
-     */
     static public function get_instance() {
         if ( self::$instance == NULL ) {
             self::$instance = new self();
@@ -36,24 +22,25 @@ final class Yoast_Seo_Add_On {
         return self::$instance;
     }
 
-    /**
-     * Yoast_Seo_Add_On constructor.
-     */
     protected function __construct() {
-        $this->add_on = new RapidAddon( 'Yoast SEO Add-On', 'yoast_seo_addon' );
+        
+        // Define the add-on
+        $this->add_on = new RapidAddon( 'Yoast SEO Add-On', 'yoast_seo_add_on' );
+        
+        // Add UI elements to the import template
         $this->add_on->add_field( 'yoast_wpseo_title', 'SEO Title', 'text' );
         $this->add_on->add_field( 'yoast_wpseo_metadesc', 'Meta Description', 'text' );
         $this->add_on->add_field( 'yoast_wpseo_meta-robots-noindex', 'Meta Robots Index', 'radio', ['' => 'default', '1' => 'noindex', '2' => 'index'] );
         $this->add_on->add_field( 'yoast_wpseo_opengraph-image', 'Facebook Image', 'image' );
+
         $this->add_on->set_import_function( [ $this, 'import' ] );
         add_action( 'admin_init', [ $this, 'admin_init' ] );
     }
 
-    /**
-     *  Check add-on conditions.
-     */
+    // Check if Yoast SEO is installed and activate
     public function admin_init() {
         if ( function_exists('is_plugin_active') ) {
+            
             // Display this notice if neither the free or pro version of the Yoast plugin is active.
             if ( ! is_plugin_active( 'wordpress-seo/wp-seo.php' ) && ! is_plugin_active( 'wordpress-seo-premium/wp-seo-premium.php' ) ) {
                 // Specify a custom admin notice.
@@ -61,6 +48,7 @@ final class Yoast_Seo_Add_On {
                     'The Yoast WordPress SEO Add-On requires WP All Import <a href="http://wordpress.org/plugins/wp-all-import" target="_blank">Free</a> and the <a href="https://yoast.com/wordpress/plugins/seo/">Yoast WordPress SEO</a> plugin.'
                 );
             }
+            
             // Only run this add-on if the free or pro version of the Yoast plugin is active.
             if ( is_plugin_active( 'wordpress-seo/wp-seo.php' ) || is_plugin_active( 'wordpress-seo-premium/wp-seo-premium.php' ) ) {
                 $this->add_on->run();
@@ -68,13 +56,7 @@ final class Yoast_Seo_Add_On {
         }
     }
 
-    /**
-     * Import function.
-     *
-     * @param $post_id
-     * @param $data
-     * @param $import_options
-     */
+    // Check if the user has allowed these fields to be updated, and then import data to them
     public function import( $post_id, $data, $import_options ) {
 
         if ( $this->add_on->can_update_meta( '_yoast_wpseo_title', $import_options ) ) {
@@ -96,4 +78,4 @@ final class Yoast_Seo_Add_On {
     }
 }
 
-Yoast_Seo_Add_On::get_instance();
+yoast_seo_add_on::get_instance();
