@@ -47,13 +47,13 @@ final class Yoast_Seo_Add_On {
         $this->add_on->add_field( 'yoast_wpseo_opengraph-image', 'Facebook Image', 'image' );
         $this->add_on->import_images( 'yoast_wpseo_photo_gallery', 'Photo Gallery', 'images', [ $this, 'photo_gallery' ]);
         $this->add_on->set_import_function( [ $this, 'import' ] );
-        add_action( 'admin_init', [ $this, 'admin_init' ] );
+        add_action( 'init', [ $this, 'init' ] );
     }
 
     /**
      *  Check add-on conditions.
      */
-    public function admin_init() {
+    public function init() {
         if ( function_exists('is_plugin_active') ) {
             // Display this notice if neither the free or pro version of the Yoast plugin is active.
             if ( ! is_plugin_active( 'wordpress-seo/wp-seo.php' ) && ! is_plugin_active( 'wordpress-seo-premium/wp-seo-premium.php' ) ) {
