@@ -9,7 +9,7 @@ Author: WP All Import
 include "rapid-addon.php";
 
 
-final class yoast_seo_add_on {
+final class Yoast_SEO_Add_On {
 
     protected static $instance;
 
@@ -78,4 +78,4 @@ final class yoast_seo_add_on {
     }
 }
 
-yoast_seo_add_on::get_instance();
+Yoast_SEO_Add_On::get_instance();
