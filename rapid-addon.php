@@ -1,4 +1,12 @@
 <?php
+/**
+ * RapidAddon
+ *
+ * @package     WP All Import RapidAddon
+ * @copyright   Copyright (c) 2014, Soflyy
+ * @license     http://opensource.org/licenses/gpl-2.0.php GNU Public License
+ * @version 	1.1.1
+ */
 
 if (!class_exists('RapidAddon')) {
 	
@@ -44,19 +52,19 @@ if (!class_exists('RapidAddon')) {
 			'auto_set_extension' => 0,
 			'new_extension' => '',
 			'do_not_remove_images' => 1,
+            'search_existing_images_logic' => 'by_url'
 		);
 
 		protected $isWizard = true;
 
 		function __construct($name, $slug) {
-
 			$this->name = $name;
 			$this->slug = $slug;
 			if (!empty($_GET['id'])){
 				$this->isWizard = false;
 			}
-		}
-
+        }
+        
 		function set_import_function($name) {
 			$this->import_function = $name;
 		}
@@ -138,11 +146,13 @@ if (!class_exists('RapidAddon')) {
 			add_filter('wp_all_import_addon_import', array($this, 'wpai_api_import'));
 			add_filter('wp_all_import_addon_saved_post', array($this, 'wpai_api_post_saved'));
 			add_filter('pmxi_options_options', array($this, 'wpai_api_options'));
-			add_filter('wp_all_import_image_sections', array($this, 'additional_sections'), 10, 1);
+            add_filter('wp_all_import_image_sections', array($this, 'additional_sections'), 10, 1);
+            add_filter('pmxi_custom_types', array($this, 'filter_post_types'), 10, 2);
+            add_filter('pmxi_post_list_order', array($this,'sort_post_types'), 10, 1);
+            add_filter('wp_all_import_post_type_image', array($this, 'post_type_image'), 10, 1 );
 			add_action('pmxi_extend_options_featured',  array($this, 'wpai_api_metabox'), 10, 2);
-			add_action('admin_init', array($this, 'admin_notice_ignore'));			
-
-		}
+            add_action('admin_init', array($this, 'admin_notice_ignore'));
+        }        
 
 		function parse($data) {
 			
@@ -227,19 +237,23 @@ if (!class_exists('RapidAddon')) {
 
 		function options_array() {
 
-			$options_list = array();
+            $options_list = array();
+            
+            if ( ! empty( $this->fields ) ) {
 
-			foreach ($this->fields as $field_slug => $field_params) {
-				if (in_array($field_params['type'], array('title', 'plain_text', 'acf'))) continue;
-				$default_value = '';
-				if (!empty($field_params['enum_values'])){
-					foreach ($field_params['enum_values'] as $key => $value) {						
-						$default_value = $key;
-						break;
-					}
-				}
-				$options_list[$field_slug] = $default_value;
-			}			
+                foreach ($this->fields as $field_slug => $field_params) {
+                    if (in_array($field_params['type'], array('title', 'plain_text', 'acf'))) continue;
+                    $default_value = '';
+                    if (!empty($field_params['enum_values'])){
+                        foreach ($field_params['enum_values'] as $key => $value) {						
+                            $default_value = $key;
+                            break;
+                        }
+                    }
+                    $options_list[$field_slug] = $default_value;
+                }
+
+            }			
 
 			if ( ! empty($this->options) ){
 				foreach ($this->options as $slug => $value) {
@@ -319,70 +333,68 @@ if (!class_exists('RapidAddon')) {
 
 				$post_id = $importData['pid'];
 				$index = $importData['i'];
+				$data = array();
+				if (!empty($this->fields)){
+					foreach ($this->fields as $field_slug => $field_params) {
+						if (in_array($field_params['type'], array('title', 'plain_text'))) continue;
+						switch ($field_params['type']) {
 
-				foreach ($this->fields as $field_slug => $field_params) {
+							case 'image':
+								
+								// import the specified image, then set the value of the field to the image ID in the media library
 
-					if (in_array($field_params['type'], array('title', 'plain_text'))) continue;
+								$image_url_or_path = $parsedData[$field_slug][$index];
 
-					switch ($field_params['type']) {
+								$download = $import_options['download_image'][$field_slug];
 
-						case 'image':
+								$uploaded_image = PMXI_API::upload_image($post_id, $image_url_or_path, $download, $importData['logger'], true, "", "images", true, $importData['articleData']);
+
+								$data[$field_slug] = array(
+									"attachment_id" => $uploaded_image,
+									"image_url_or_path" => $image_url_or_path,
+									"download" => $download
+								);
+
+								break;
+
+							case 'file':
+
+								$image_url_or_path = $parsedData[$field_slug][$index];
+
+								$download = $import_options['download_image'][$field_slug];
+
+								$uploaded_file = PMXI_API::upload_image($post_id, $image_url_or_path, $download, $importData['logger'], true, "", "files", true, $importData['articleData']);
+
+								$data[$field_slug] = array(
+									"attachment_id" => $uploaded_file,
+									"image_url_or_path" => $image_url_or_path,
+									"download" => $download
+								);
+
+								break;
 							
-							// import the specified image, then set the value of the field to the image ID in the media library
+							default:
+								// set the field data to the value of the field after it's been parsed
+								$data[$field_slug] = $parsedData[$field_slug][$index];
+								break;
+						}					
 
-							$image_url_or_path = $parsedData[$field_slug][$index];
+						// apply mapping rules if they exist
+						if (!empty($import_options['mapping'][$field_slug])) {
+							$mapping_rules = json_decode($import_options['mapping'][$field_slug], true);
 
-							$download = $import_options['download_image'][$field_slug];
-
-							$uploaded_image = PMXI_API::upload_image($post_id, $image_url_or_path, $download, $importData['logger'], true);
-
-							$data[$field_slug] = array(
-								"attachment_id" => $uploaded_image,
-								"image_url_or_path" => $image_url_or_path,
-								"download" => $download
-							);
-
-							break;
-
-						case 'file':
-
-							$image_url_or_path = $parsedData[$field_slug][$index];
-
-							$download = $import_options['download_image'][$field_slug];
-
-							$uploaded_file = PMXI_API::upload_image($post_id, $image_url_or_path, $download, $importData['logger'], true, "", "files");
-
-							$data[$field_slug] = array(
-								"attachment_id" => $uploaded_file,
-								"image_url_or_path" => $image_url_or_path,
-								"download" => $download
-							);
-
-							break;
-						
-						default:
-							// set the field data to the value of the field after it's been parsed
-							$data[$field_slug] = $parsedData[$field_slug][$index];
-							break;
-					}					
-
-					// apply mapping rules if they exist
-					if (!empty($import_options['mapping'][$field_slug])) {
-						$mapping_rules = json_decode($import_options['mapping'][$field_slug], true);
-
-						if (!empty($mapping_rules) and is_array($mapping_rules)) {
-							foreach ($mapping_rules as $rule_number => $map_to) {
-								if (!empty($map_to[trim($data[$field_slug])])){
-									$data[$field_slug] = trim($map_to[trim($data[$field_slug])]);
-									break;
+							if (!empty($mapping_rules) and is_array($mapping_rules)) {
+								foreach ($mapping_rules as $rule_number => $map_to) {
+									if (isset($map_to[trim($data[$field_slug])])){
+										$data[$field_slug] = trim($map_to[trim($data[$field_slug])]);
+										break;
+									}
 								}
 							}
 						}
+						// --------------------
 					}
-					// --------------------
-
-
-				}
+				}				
 
 				call_user_func($this->import_function, $post_id, $data, $importData['import'], $importData['articleData'], $importData['logger']);
 			}
@@ -641,12 +653,17 @@ if (!class_exists('RapidAddon')) {
 							'tooltip' => $this->fields[$sub_field['slug']]['tooltip'],
 							'field_name' => $this->slug."[".$sub_field['slug']."]",
 							'field_value' => $current_values[$this->slug][$sub_field['slug']],
-							'download_image' => $current_values[$this->slug]['download_image'][$sub_field['slug']],
+							'download_image' => null,
 							'field_key' => $sub_field['slug'],
 							'addon_prefix' => $this->slug,
 							'is_main_field' => $sub_field['is_main_field']
 						)
 					);
+
+					if ( array_key_exists( 'download_image', $current_values[$this->slug] ) ) {
+						$field['params']['download_image'] = $current_values[$this->slug]['download_image'][$sub_field['slug']];
+					}
+                    break;
 				case 'file':
 					$field = array(
 						'type'   => 'file',
@@ -655,12 +672,17 @@ if (!class_exists('RapidAddon')) {
 							'tooltip' => $this->fields[$sub_field['slug']]['tooltip'],
 							'field_name' => $this->slug."[".$sub_field['slug']."]",
 							'field_value' => $current_values[$this->slug][$sub_field['slug']],
-							'download_image' => $current_values[$this->slug]['download_image'][$sub_field['slug']],
+							'download_image' => null,
 							'field_key' => $sub_field['slug'],
 							'addon_prefix' => $this->slug,
 							'is_main_field' => $sub_field['is_main_field']
 						)
 					);
+
+					if ( array_key_exists( 'download_image', $current_values[$this->slug] ) ) {
+						$field['params']['download_image'] = $current_values[$this->slug]['download_image'][$sub_field['slug']];
+					}
+
 					break;
 				case 'radio':
 					$field = array(
@@ -673,8 +695,8 @@ if (!class_exists('RapidAddon')) {
 							'enum_values' => $this->fields[$sub_field['slug']]['enum_values'],
 							'mapping' => true,
 							'field_key' => $sub_field['slug'],
-							'mapping_rules' => $current_values[$this->slug]['mapping'][$sub_field['slug']],
-							'xpath' => $current_values[$this->slug]['xpaths'][$sub_field['slug']],
+							'mapping_rules' => isset($current_values[$this->slug]['mapping'][$sub_field['slug']]) ? $current_values[$this->slug]['mapping'][$sub_field['slug']] : array(),
+							'xpath' => isset($current_values[$this->slug]['xpaths'][$sub_field['slug']]) ? $current_values[$this->slug]['xpaths'][$sub_field['slug']] : '',
 							'addon_prefix' => $this->slug,
 							'sub_fields' => $this->get_sub_fields($this->fields[$sub_field['slug']], $sub_field['slug'], $current_values),
 							'is_main_field' => $sub_field['is_main_field']
@@ -738,7 +760,9 @@ if (!class_exists('RapidAddon')) {
 
 			if (empty($text)) return;
 
-			return $this->add_field(sanitize_key($text) . time() . uniqid() . count($this->fields), $text, 'plain_text', null, "", $is_html);			
+			$count = is_array($this->fields) ? count($this->fields) : 0;
+
+			return $this->add_field(sanitize_key($text) . time() . uniqid() . $count, $text, 'plain_text', null, "", $is_html);
 
 		}			
 
@@ -868,7 +892,7 @@ if (!class_exists('RapidAddon')) {
 		* simply add an additional section 
 		*
 		*/
-		function import_images( $slug, $title, $type = 'images' ){
+		function import_images( $slug, $title, $type = 'images', $callback = NULL ){
 			
 			if ( empty($title) or empty($slug) ) return;
 
@@ -889,8 +913,14 @@ if (!class_exists('RapidAddon')) {
 			}
 
 			add_filter('wp_all_import_is_allow_import_images', array($this, 'is_allow_import_images'), 10, 2);			
-			
-			if (function_exists($slug)) add_action( $section_slug, $slug, 10, 4);
+
+			if ($callback && is_callable($callback)) {
+                add_action( $section_slug, $callback, 10, 4);
+            } else {
+                if (function_exists($slug)) {
+                    add_action( $section_slug, $slug, 10, 4);
+                }
+            }
 		}			
 			/**
 			*
@@ -958,14 +988,14 @@ if (!class_exists('RapidAddon')) {
 					if ( isset($import->options[$this->slug][$option_name]) and $import->options[$this->slug][$option_name] != '') {						
 						if ($import->options[$this->slug][$option_name] == "xpath") {
 							if ($import->options[$this->slug]['xpaths'][$option_name] == ""){
-								$count and $this->data[$option_name] = array_fill(0, $count, "");
+								$count and $data[$option_name] = array_fill(0, $count, "");
 							} else {
-								$data[$option_name] = XmlImportParser::factory($xml, $cxpath, $import->options[$this->slug]['xpaths'][$option_name], $file)->parse($records);
+								$data[$option_name] = XmlImportParser::factory($xml, $cxpath, (string) $import->options[$this->slug]['xpaths'][$option_name], $file)->parse();
 								$tmp_files[] = $file;						
 							}
 						} 
 						else {							
-							$data[$option_name] = XmlImportParser::factory($xml, $cxpath, $import->options[$this->slug][$option_name], $file)->parse();
+							$data[$option_name] = XmlImportParser::factory($xml, $cxpath, (string) $import->options[$this->slug][$option_name], $file)->parse();
 							$tmp_files[] = $file;
 						}
 
@@ -1135,8 +1165,121 @@ if (!class_exists('RapidAddon')) {
 
 			$m and $this->logger and call_user_func($this->logger, $m);
 
-		}
+        }
+        
+        public function remove_post_type( $type = '' ) {
+            if ( ! empty( $type ) ) {
+                $this->add_option( 'post_types_to_remove', $type );
+            }
+        }
+
+        public function filter_post_types( $custom_types = array(), $custom_type = '' ) {
+            $options = $this->options_array();
+            $option_key = 'post_types_to_remove';
+
+            if ( array_key_exists( $option_key, $options ) ) {
+                $type = $options[ $option_key ];
+                
+                if ( ! empty( $type ) ) {
+                    if ( ! is_array( $type ) ) {
+                        if ( array_key_exists( $type, $custom_types )  ) {
+                            unset( $custom_types[ $type ] );
+                        }
+                    } else {
+                        foreach ( $type as $key => $post_type ) {
+                            if ( array_key_exists( $post_type, $custom_types ) ) {
+                                unset( $custom_types[ $post_type ] );
+                            }
+                        }
+                    }
+                }
+            }
+            return $custom_types;
+        }
+
+        public function sort_post_types( array $order ) {
+            $options = $this->options_array();
+            $option_key = 'post_type_move';
+
+            if ( array_key_exists( $option_key, $options ) ) {
+                $move_rules = maybe_unserialize( $options[ $option_key ] );
+
+                foreach ( $move_rules as $rule ) {
+                    $move_this  = $rule['move_this'];
+                    $move_to    = $rule['move_to'];
+                    if ( $move_to > count( $order ) ) {
+                        if ( ( $rm_key = array_search( $move_this, $order ) ) !== false ) {
+                            unset( $order[ $rm_key ] );
+                        }
+                        array_push( $order, $move_this );                        
+                    } else {
+                        if ( ( $rm_key = array_search( $move_this, $order ) ) !== false ) {
+                            unset( $order[ $rm_key ] );
+                        }
+                        array_splice( $order, $move_to, 0, $move_this );
+                    }
+                }
+
+                return $order;
+            }
+
+            return $order;
+        }
+
+        public function move_post_type( $move_this = null, $move_to = null ) {
+            $move_rules = array();
+
+            if ( ! is_array( $move_this ) && ! is_array( $move_to ) ) {
+                $move_rules[] = array(
+                    'move_this' => $move_this,
+                    'move_to'   => $move_to
+                );
+            } else {
+                foreach ( $move_this as $key => $move_post ) {                    
+                    $move_rules[] = array(
+                        'move_this' => $move_post,
+                        'move_to'   => $move_to[ $key ]
+                    );
+                }
+            }
+
+            $this->add_option( 'post_type_move', $move_rules );
+        }
+
+        public function set_post_type_image( $post_type = null, $image = null ) {
+            $post_type_image_rules = array();
+
+            if ( ! is_array( $post_type ) ) {
+
+                $post_type_image_rules[ $post_type ] = array(
+                        'post_type' => $post_type,
+                        'image'     => $image
+                );
+
+            } else {
+
+                if ( count( $post_type ) == count( $image ) ) {
+
+                    foreach ( $post_type as $key => $post_name ) {
+                        $post_type_image_rules[ $post_name ] = array(
+                            'post_type' => $post_name,
+                            'image'     => $image[ $key ]
+                        );
+                    }
+                }
+            }
+
+            $this->add_option( 'post_type_image', $post_type_image_rules );
+        }
+
+        public function post_type_image( $image ) {
+            $options = $this->options_array();
+            $option_key = 'post_type_image';
+            if ( array_key_exists( $option_key, $options ) ) {
+                $post_type_image_rules = maybe_unserialize( $options[ $option_key ] );
+                return $post_type_image_rules;
+            }
+            return $image;
+        }
 	}	
-
 }
-

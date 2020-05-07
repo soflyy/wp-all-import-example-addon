@@ -45,6 +45,7 @@ final class Yoast_Seo_Add_On {
         $this->add_on->add_field( 'yoast_wpseo_metadesc', 'Meta Description', 'text' );
         $this->add_on->add_field( 'yoast_wpseo_meta-robots-noindex', 'Meta Robots Index', 'radio', ['' => 'default', '1' => 'noindex', '2' => 'index'] );
         $this->add_on->add_field( 'yoast_wpseo_opengraph-image', 'Facebook Image', 'image' );
+        $this->add_on->import_images( 'yoast_wpseo_photo_gallery', 'Photo Gallery', 'images', [ $this, 'photo_gallery' ]);
         $this->add_on->set_import_function( [ $this, 'import' ] );
         add_action( 'admin_init', [ $this, 'admin_init' ] );
     }
@@ -93,6 +94,18 @@ final class Yoast_Seo_Add_On {
             $image_url = wp_get_attachment_url( $data['yoast_wpseo_opengraph-image']['attachment_id'] );
             update_post_meta( $post_id, '_yoast_wpseo_opengraph-image', $image_url );
         }
+    }
+
+    /**
+     * Import gallery handler.
+     *
+     * @param $post_id
+     * @param $attachment_id
+     * @param $image_filepath
+     * @param $import_options
+     */
+    public function photo_gallery( $post_id, $attachment_id, $image_filepath, $import_options ) {
+
     }
 }
 
