@@ -25,7 +25,7 @@ final class Yoast_SEO_Add_On {
     protected function __construct() {
         
         // Define the add-on
-        $this->add_on = new RapidAddon( 'Yoast SEO Add-On', 'yoast_seo_add_on' );
+        $this->add_on = new RapidAddon( 'Yoast SEO Add-On', 'wpai_yoast_seo_add_on' );
         
         // Add UI elements to the import template
         $this->add_on->add_field( 'yoast_wpseo_title', 'SEO Title', 'text' );
